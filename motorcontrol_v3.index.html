@@ -586,30 +586,44 @@ function renderAccion(){
 }
 
 function renderQR(tipo){
-  let label='',hint='';
+  let label='', hint='';
+  const esNuevo = (tipo === 'qr_nuevo'); // Detectamos si es registro inicial
+
   if(tipo==='qr_sale'){label='Motor que SALE';hint='Escanea el QR del motor que vas a retirar';}
   else if(tipo==='qr_entra'){label='Motor que ENTRA';hint='Escanea el QR del motor de repuesto';}
-  else if(tipo==='qr_nuevo'){label='Motor nuevo';hint='Ingresa el código que quieres asignar o escanea su QR';}
-  else{label='Motor';hint='Escanea el QR o ingresa el código manualmente';}
+  else if(tipo==='qr_nuevo'){label='Motor nuevo';hint='Escanea el código QR que pegaste en el motor';}
+  else{label='Motor';hint='Escanea el QR para identificar el equipo';}
 
-  const motorCard=tipo==='qr_entra'?
-    (S.motorEntra?`<div class="motor-card found-blue"><div class="motor-card-label">Motor entrante identificado</div><div class="motor-card-code">${S.motorEntra.codigo}</div><div class="motor-card-name">${S.motorEntra.marca||''} ${S.motorEntra.potencia_kw?'— '+S.motorEntra.potencia_kw+' kW':''}</div></div>`:''):
-    (S.motorSale?`<div class="motor-card found"><div class="motor-card-label">${tipo==='qr_nuevo'?'Motor listo para registrar':'Motor identificado'}</div><div class="motor-card-code">${S.motorSale.codigo}</div><div class="motor-card-name">${S.motorSale.marca||''} ${S.motorSale.potencia_kw?'— '+S.motorSale.potencia_kw+' kW':''}</div><div class="motor-card-loc">${S.motorSale.linea||''} ${S.motorSale.equipo?'· '+S.motorSale.equipo:''}</div></div>`:'');
+  const motorCard = tipo==='qr_entra'?
+    (S.motorEntra?`<div class="motor-card found-blue"><div class="motor-card-label">Motor entrante identificado</div><div class="motor-card-code">${S.motorEntra.codigo}</div></div>`:''):
+    (S.motorSale?`<div class="motor-card found"><div class="motor-card-label">${esNuevo?'Motor listo para registrar':'Motor identificado'}</div><div class="motor-card-code">${S.motorSale.codigo}</div></div>`:'');
 
-  return`
+  return `
     ${motorCard}
     <div class="qr-box">
       <div class="qr-video-wrap" id="qr-vwrap"><video id="qr-video" playsinline></video><div class="qr-scan-frame"><div class="qr-scan-frame-inner"></div></div></div>
       <div class="qr-btns">
-        <button class="btn btn-primary" id="btn-scan" onclick="startScan('${tipo}')" style="width:100%;">📷 Escanear código QR</button>
+        <button class="btn btn-primary" id="btn-scan" onclick="startScan('${tipo}')" style="width:100%;">📷 Activar Cámara y Escanear</button>
         <button class="btn btn-secondary" id="btn-stop" onclick="stopScan()" style="width:100%;display:none;">✕ Detener cámara</button>
       </div>
     </div>
-    <div class="qr-or"><span>o ingresa el código manualmente</span></div>
-    <div class="tec-field"><label>${label}</label><input id="qr-input" type="text" placeholder="Ej: MOT-047" value="${tipo==='qr_entra'?(S.motorEntra?.codigo||''):(S.motorSale?.codigo||'')}"></div>
-    <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="buscarMotorTec('${tipo}')">Buscar motor</button>`;
+    
+    <div class="tec-field" style="margin-top:20px;">
+      <label>${label}</label>
+      <input id="qr-input" type="text" 
+             placeholder="Esperando escaneo..." 
+             value="${tipo==='qr_entra'?(S.motorEntra?.codigo||''):(S.motorSale?.codigo||'')}" 
+             readonly 
+             style="background: var(--bg); color: var(--accent); font-weight: bold; text-align: center;">
+    </div>
+    
+    <!-- El botón de búsqueda manual solo aparece si NO es un motor nuevo -->
+    ${!esNuevo ? `
+      <div class="qr-or"><span>o si el QR está dañado</span></div>
+      <button class="btn btn-secondary" style="width:100%; padding:10px;" onclick="habilitarEscrituraManual('${tipo}')">Ingresar manualmente</button>
+    ` : ''}
+  `;
 }
-
 function renderUbicacion(){
   const d=S.datos;
   return`<div class="step-desc">¿En qué parte de la planta está instalado este motor?</div>
