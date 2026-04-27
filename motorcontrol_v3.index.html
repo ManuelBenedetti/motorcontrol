@@ -441,7 +441,7 @@ const PASO_LABELS={
   accion:'¿Qué trabajo vas a hacer?',qr:'Identificar motor',qr_nuevo:'Código del motor',
   qr_sale:'Motor que SALE',qr_entra:'Motor que ENTRA',
   ubicacion:'Ubicación',placa:'Datos de la placa',caja:'Caja reductora',
-  rodamientos:'Rodamientos',estado:'Estado del motor',
+  rodamientos:'Descansos',estado:'Estado del motor',
   trabajos:'Trabajos realizados',estado_post:'Estado tras mantención',
   fallas_corregidas:'Fallas corregidas',estado_post_arreglo:'Estado tras arreglo',
   rodamiento_nuevo:'Rodamiento reemplazado',obs:'Observaciones',
@@ -502,7 +502,7 @@ function renderStepHTML(nombre){
     case 'ubicacion': return renderUbicacion();
     case 'placa': return renderPlaca();
     case 'caja': return renderCaja();
-    case 'rodamientos': return renderRodamientos();
+    case 'rodamientos': return renderDescansos();
     case 'estado': return renderEstado();
     case 'trabajos': return renderTrabajos();
     case 'estado_post': return renderEstadoPost(['recien_mantenido','en_seguimiento','con_fallas'],['Recién mantenido — OK','Requiere seguimiento','Presenta fallas']);
@@ -567,10 +567,10 @@ function renderPlaca(){
   return`<div class="step-desc">Ingresa los datos que aparecen en la placa del motor.</div>
   <div class="tec-grid2">
     <div class="tec-field"><label>Marca</label><input id="f-marca" type="text" placeholder="Ej: WEG" value="${d.marca||''}"></div>
-    <div class="tec-field"><label>Potencia (kW)</label><input id="f-potencia" type="number" step="0.1" placeholder="Ej: 15" value="${d.potencia_kw||''}"></div>
-    <div class="tec-field"><label>Voltaje (V)</label><input id="f-voltaje" type="text" placeholder="Ej: 380" value="${d.voltaje||''}"></div>
-    <div class="tec-field"><label>RPM</label><input id="f-rpm" type="number" placeholder="Ej: 1450" value="${d.rpm||''}"></div>
-    <div class="tec-field"><label>Corriente (A)</label><input id="f-corriente" type="number" step="0.1" placeholder="Ej: 28.5" value="${d.corriente||''}"></div>
+    <div class="tec-field"><label>Potencia (kW)</label><input id="f-potencia" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 15" value="${d.potencia_kw||''}"></div>
+    <div class="tec-field"><label>Voltaje (V)</label><select id="f-voltaje"><option value="">Selecciona...</option><option value="24" ${d.voltaje==='24'?'selected':''}>24V</option><option value="110" ${d.voltaje==='110'?'selected':''}>110V</option><option value="220" ${d.voltaje==='220'?'selected':''}>220V</option><option value="380" ${d.voltaje==='380'?'selected':''}>380V</option><option value="440" ${d.voltaje==='440'?'selected':''}>440V</option></select></div>
+    <div class="tec-field"><label>RPM</label><input id="f-rpm" type="number" inputmode="numeric" inputmode="numeric" placeholder="Ej: 1450" value="${d.rpm||''}"></div>
+    <div class="tec-field"><label>Corriente (A)</label><input id="f-corriente" type="number" inputmode="decimal" step="0.1" placeholder="Ej: 28.5" value="${d.corriente||''}"></div>
     <div class="tec-field"><label>N° de serie</label><input id="f-serie" type="text" placeholder="Opcional" value="${d.numero_serie||''}"></div>
   </div>`;
 }
@@ -595,8 +595,8 @@ function renderCaja(){
 function renderRodamientos(){
   const d=S.datos;
   return`<div class="step-desc">¿Qué rodamientos (descansos) usa este motor?</div>
-  <div class="tec-field"><label>Rodamiento delantero</label><input id="f-rd" type="text" placeholder="Ej: 6205-2RS" value="${d.rodamiento_delantero||''}"></div>
-  <div class="tec-field"><label>Rodamiento trasero</label><input id="f-rt" type="text" placeholder="Ej: 6308" value="${d.rodamiento_trasero||''}"></div>
+  <div class="tec-field"><label>Descanso delantero</label><input id="f-rd" type="text" placeholder="Ej: 6205-2RS" value="${d.rodamiento_delantero||''}"></div>
+  <div class="tec-field"><label>Descanso trasero</label><input id="f-rt" type="text" placeholder="Ej: 6308" value="${d.rodamiento_trasero||''}"></div>
   <div class="tec-field"><label>Observaciones (opcional)</label><textarea id="f-obs" placeholder="Estado general, novedades...">${d.observaciones||''}</textarea></div>`;
 }
 
