@@ -273,6 +273,15 @@ textarea{height:80px;resize:vertical;}
           <div class="metric"><div class="metric-label">Con fallas</div><div class="metric-value amber" id="met-fallas">—</div></div>
           <div class="metric"><div class="metric-label">Críticos</div><div class="metric-value red" id="met-criticos">—</div></div>
         </div>
+        <!-- --- PEGA ESTO DEBAJO DE LAS METRICS --- -->
+        <div class="table-wrap" id="seccion-alertas" style="border-color: var(--amber); display:none;">
+          <div class="table-header-row" style="background: var(--amber-bg); border-bottom: 1px solid var(--amber);">
+            <div class="table-title" style="color: var(--amber);">⚠️ Alertas: Mantenimiento Pendiente</div>
+          </div>
+          <div id="lista-alertas-pendientes">
+          <!-- Aquí el JS meterá los motores vencidos -->
+          </div>
+        </div>
         <div class="table-wrap"><div class="table-header-row"><div class="table-title">Últimos motores</div><button class="btn btn-secondary" onclick="showView('motores')">Ver todos</button></div><div id="dashboard-table"><div class="loading">Cargando...</div></div></div>
         <div class="table-wrap"><div class="table-header-row"><div class="table-title">Últimas intervenciones</div><button class="btn btn-secondary" onclick="showView('intervenciones')">Ver todas</button></div><div id="dashboard-iv"><div class="loading">Cargando...</div></div></div>
       </div>
@@ -366,16 +375,62 @@ function showView(v){
   if(v==='tecnicos')loadTecnicos();
 }
 function copyTecLink(){const u=location.href.split('?')[0]+'?modo=tecnico';navigator.clipboard.writeText(u).then(()=>showToast('Link copiado — compártelo con tus técnicos'));}
-async function loadDashboard(){
-  const{data}=await sb.from('motores').select('*').order('fecha_registro',{ascending:false});
-  if(!data)return; allMotores=data;
-  document.getElementById('met-total').textContent=data.length;
-  document.getElementById('met-ok').textContent=data.filter(m=>['nuevo','recien_mantenido'].includes(m.estado)).length;
-  document.getElementById('met-fallas').textContent=data.filter(m=>['con_fallas','en_seguimiento'].includes(m.estado)).length;
-  document.getElementById('met-criticos').textContent=data.filter(m=>['inoperativo','para_retiro'].includes(m.estado)).length;
-  document.getElementById('dashboard-table').innerHTML=data.length?renderMotoresTable(data.slice(0,6)):'<div class="empty"><div class="empty-title">Sin motores registrados</div></div>';
-  const{data:iv}=await sb.from('intervenciones').select('*,motores(codigo)').order('fecha',{ascending:false}).limit(6);
-  document.getElementById('dashboard-iv').innerHTML=iv&&iv.length?`<table><thead><tr><th>Motor</th><th>Tipo</th><th>Técnico</th><th>Fecha</th></tr></thead><tbody>${iv.map(i=>`<tr><td><span class="motor-code">${i.motores?.codigo||'—'}</span></td><td>${tipoLabel(i.tipo)}</td><td>${i.realizado_por||'—'}</td><td style="font-size:12px;color:var(--text3);">${new Date(i.fecha).toLocaleDateString('es-CL')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="empty-title">Sin intervenciones aún</div></div>';
+async function loadDashboard() {
+  // 1. Traemos la info de Supabase
+  const { data: motores } = await sb.from('motores').select('*').order('fecha_registro', { ascending: false });
+  const { data: ivs } = await sb.from('intervenciones').select('*').order('fecha', { ascending: false });
+  
+  if (!motores) return;
+  allMotores = motores;
+
+  const hoy = new Date();
+  let htmlAlertas = '<table>';
+  let contadorAlertas = 0;
+
+  // 2. Lógica de cálculo por motor
+  motores.forEach(m => {
+    // Buscamos su última intervención, si no tiene, usamos la fecha de registro
+    const ultimaIv = ivs.find(i => i.motor_id === m.id);
+    const fechaRef = ultimaIv ? new Date(ultimaIv.fecha) : new Date(m.fecha_registro);
+    
+    // Calculamos días pasados
+    const diasPasados = Math.floor((hoy - fechaRef) / (1000 * 60 * 60 * 24));
+
+    // Si pasaron más de 30 días, generamos la alerta
+    if (diasPasados >= UMBRALES.chequeo) {
+      contadorAlertas++;
+      const colorAlerta = diasPasados >= UMBRALES.overhaul ? 'var(--red)' : 'var(--amber)';
+      
+      htmlAlertas += `
+        <tr onclick="verMotor('${m.id}')" style="cursor:pointer;">
+          <td><span class="motor-code">${m.codigo}</span></td>
+          <td><div style="color:${colorAlerta}; font-weight:bold;">Hace ${diasPasados} días</div></td>
+          <td style="font-size:12px;">${m.linea || 'Sin ubicación'}</td>
+          <td><button class="btn btn-secondary" style="font-size:11px;">Revisar ahora</button></td>
+        </tr>`;
+    }
+  });
+
+  htmlAlertas += '</table>';
+
+  // 3. Mostrar u ocultar la sección de alertas
+  const seccion = document.getElementById('seccion-alertas');
+  if (contadorAlertas > 0) {
+    seccion.style.display = 'block';
+    document.getElementById('lista-alertas-pendientes').innerHTML = htmlAlertas;
+  } else {
+    seccion.style.display = 'none';
+  }
+
+  // Actualizamos el resto de tus métricas originales
+  document.getElementById('met-total').textContent = motores.length;
+  document.getElementById('met-ok').textContent = motores.filter(m => ['nuevo','recien_mantenido'].includes(m.estado)).length;
+  document.getElementById('met-fallas').textContent = motores.filter(m => ['con_fallas','en_seguimiento'].includes(m.estado)).length;
+  document.getElementById('met-criticos').textContent = motores.filter(m => ['inoperativo','para_retiro'].includes(m.estado)).length;
+  
+  // Tablas de abajo (tus funciones originales)
+  document.getElementById('dashboard-table').innerHTML = renderMotoresTable(motores.slice(0, 6));
+  document.getElementById('dashboard-iv').innerHTML = renderIntervencionesResumen(ivs.slice(0, 6));
 }
 async function loadMotores(){
   const{data}=await sb.from('motores').select('*').order('fecha_registro',{ascending:false});
