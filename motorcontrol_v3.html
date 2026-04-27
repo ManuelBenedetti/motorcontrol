@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MotorControl</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--bg2:#161b27;--bg3:#1e2535;--border:#2a3348;--border2:#3a4560;
+  --text:#e8eaf0;--text2:#8b95aa;--text3:#5a6478;
+  --accent:#3b82f6;--accent2:#1d4ed8;
+  --green:#22c55e;--green-bg:#052e16;
+  --amber:#f59e0b;--amber-bg:#1c1003;
+  --red:#ef4444;--red-bg:#1c0303;
+  --gray:#6b7280;--gray-bg:#111827;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* JEFE LAYOUT */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh;z-index:100;}
+.jefe-main{margin-left:220px;flex:1;}
+.sidebar-header{padding:24px 20px 20px;border-bottom:1px solid var(--border);}
+.sidebar-logo{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;}
+.sidebar-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.nav{padding:12px 0;flex:1;}
+.nav-section{padding:8px 20px 4px;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s;border-left:2px solid transparent;}
+.nav-item:hover{color:var(--text);background:var(--bg3);}
+.nav-item.active{color:var(--accent);background:rgba(59,130,246,.08);border-left-color:var(--accent);}
+.nav-icon{width:15px;height:15px;opacity:.7;flex-shrink:0;}
+.nav-item.active .nav-icon{opacity:1;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:16px;font-weight:600;}
+.topbar-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:none;font-family:var(--font);}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.btn-secondary:hover{color:var(--text);border-color:var(--border2);}
+.btn-danger{background:rgba(239,68,68,.15);color:var(--red);border:1px solid rgba(239,68,68,.3);}
+.btn-green{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.content{padding:28px;}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px;}
+.metric{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;}
+.metric-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.metric-value{font-size:32px;font-weight:600;font-family:var(--mono);line-height:1;}
+.metric-value.green{color:var(--green);}
+.metric-value.amber{color:var(--amber);}
+.metric-value.red{color:var(--red);}
+.metric-value.blue{color:var(--accent);}
+.table-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;}
+.table-header-row{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.table-title{font-size:14px;font-weight:600;}
+table{width:100%;border-collapse:collapse;}
+th{padding:10px 16px;text-align:left;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;font-weight:500;border-bottom:1px solid var(--border);background:var(--bg3);}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.motor-code{font-family:var(--mono);font-size:12px;color:var(--accent);font-weight:500;}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid rgba(34,197,94,.2);}
+.badge-green::before{background:var(--green);}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,.2);}
+.badge-amber::before{background:var(--amber);}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,.2);}
+.badge-red::before{background:var(--red);}
+.badge-gray{background:var(--gray-bg);color:var(--gray);border:1px solid rgba(107,114,128,.2);}
+.badge-gray::before{background:var(--gray);}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:40px 20px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:14px;width:100%;max-width:640px;margin:auto;}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-title{font-size:16px;font-weight:600;}
+.modal-close{background:none;border:none;color:var(--text3);cursor:pointer;font-size:22px;line-height:1;}
+.modal-close:hover{color:var(--text);}
+.modal-body{padding:24px;}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;}
+.field{display:flex;flex-direction:column;gap:5px;}
+label{font-size:12px;color:var(--text2);font-weight:500;}
+input,select,textarea{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:13px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;width:100%;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+select option{background:var(--bg3);}
+textarea{height:80px;resize:vertical;}
+.view{display:none;}
+.view.active{display:block;}
+.empty{text-align:center;padding:48px;color:var(--text3);}
+.empty-title{font-size:15px;color:var(--text2);margin-bottom:6px;}
+.empty-sub{font-size:13px;}
+.loading{text-align:center;padding:40px;color:var(--text3);font-size:13px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;background:rgba(59,130,246,.1);color:var(--accent);border:1px solid rgba(59,130,246,.2);margin:2px;font-family:var(--mono);}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px 18px;font-size:13px;color:var(--text);z-index:999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.success{border-color:rgba(34,197,94,.4);color:var(--green);}
+.toast.error{border-color:rgba(239,68,68,.4);color:var(--red);}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.detail-field{padding:12px 16px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);}
+.detail-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
+.detail-value{font-size:13px;color:var(--text);font-weight:500;}
+.detail-value.mono{font-family:var(--mono);color:var(--accent);}
+
+/* ══════════════════════════════
+   TÉCNICO — pantalla completa
+   ══════════════════════════════ */
+.tec-wrap{min-height:100vh;display:flex;flex-direction:column;background:var(--bg);}
+
+/* Header */
+.tec-header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;gap:0;min-height:56px;}
+.tec-back{background:none;border:none;color:var(--text2);cursor:pointer;font-size:24px;padding:8px 12px 8px 0;line-height:1;display:none;}
+.tec-back:hover{color:var(--text);}
+.tec-header-info{flex:1;}
+.tec-header-title{font-size:15px;font-weight:600;color:var(--text);}
+.tec-header-sub{font-size:12px;color:var(--text3);}
+
+/* Barra de progreso */
+.tec-progress{background:var(--bg2);border-bottom:1px solid var(--border);padding:12px 20px;}
+.progress-info{display:flex;justify-content:space-between;margin-bottom:8px;}
+.progress-label{font-size:12px;color:var(--text2);font-weight:500;}
+.progress-count{font-size:12px;color:var(--text3);}
+.progress-track{height:4px;background:var(--border);border-radius:2px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width .3s ease;}
+
+/* Contenido del paso */
+.tec-step-body{flex:1;padding:20px;max-width:500px;margin:0 auto;width:100%;}
+.step-title{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.step-desc{font-size:13px;color:var(--text3);margin-bottom:24px;line-height:1.5;}
+
+/* Opciones de acción */
+.accion-list{display:flex;flex-direction:column;gap:10px;}
+.accion-card{display:flex;align-items:center;gap:14px;padding:16px 18px;background:var(--bg2);border:1.5px solid var(--border);border-radius:12px;cursor:pointer;transition:all .2s;}
+.accion-card:hover{border-color:var(--border2);background:var(--bg3);}
+.accion-card.selected{border-color:var(--accent);background:rgba(59,130,246,.08);}
+.accion-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;}
+.accion-texts{flex:1;}
+.accion-name{font-size:15px;font-weight:500;color:var(--text);}
+.accion-desc{font-size:12px;color:var(--text3);margin-top:2px;}
+.accion-arrow{color:var(--text3);font-size:20px;}
+
+/* Campos del formulario paso a paso */
+.tec-field{margin-bottom:16px;}
+.tec-field label{font-size:13px;color:var(--text2);display:block;margin-bottom:6px;font-weight:500;}
+.tec-field input,.tec-field select,.tec-field textarea{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;font-size:14px;color:var(--text);font-family:var(--font);outline:none;transition:border-color .15s;width:100%;}
+.tec-field input:focus,.tec-field select:focus,.tec-field textarea:focus{border-color:var(--accent);}
+.tec-field textarea{height:90px;resize:none;}
+.tec-grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* Toggle */
+.toggle-row{display:flex;align-items:center;gap:12px;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:8px;cursor:pointer;margin-bottom:16px;}
+.toggle-label{font-size:14px;color:var(--text2);flex:1;}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-track{position:absolute;inset:0;background:var(--border2);border-radius:22px;transition:.2s;}
+.toggle input:checked+.toggle-track{background:var(--accent);}
+.toggle-thumb{position:absolute;width:18px;height:18px;background:white;border-radius:50%;top:2px;left:2px;transition:.2s;}
+.toggle input:checked~.toggle-thumb{left:20px;}
+
+/* Chips de selección múltiple */
+.chips-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+.chip{padding:12px 14px;border-radius:8px;border:1px solid var(--border);font-size:13px;color:var(--text2);cursor:pointer;transition:all .15s;background:var(--bg2);text-align:center;}
+.chip:hover{border-color:var(--border2);}
+.chip.active-green{border-color:var(--green);background:var(--green-bg);color:var(--green);font-weight:500;}
+.chip.active-amber{border-color:var(--amber);background:var(--amber-bg);color:var(--amber);font-weight:500;}
+.chip.active-red{border-color:var(--red);background:var(--red-bg);color:var(--red);font-weight:500;}
+.chip.active-gray{border-color:var(--gray);background:var(--gray-bg);color:var(--gray);font-weight:500;}
+.chip.active-blue{border-color:var(--accent);background:rgba(59,130,246,.1);color:var(--accent);font-weight:500;}
+
+/* QR */
+.qr-box{background:var(--bg2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;}
+.qr-video-wrap{position:relative;width:100%;aspect-ratio:1;background:#000;display:none;}
+#qr-video{width:100%;height:100%;object-fit:cover;}
+.qr-scan-frame{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+.qr-scan-frame-inner{width:60%;aspect-ratio:1;border:2px solid var(--accent);border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);}
+.qr-btns{padding:14px;}
+.qr-or{display:flex;align-items:center;gap:10px;margin:12px 0;}
+.qr-or::before,.qr-or::after{content:'';flex:1;height:1px;background:var(--border);}
+.qr-or span{font-size:12px;color:var(--text3);}
+
+/* Motor card encontrado */
+.motor-card{border-radius:10px;padding:16px;margin-bottom:16px;}
+.motor-card.found{background:var(--green-bg);border:1px solid rgba(34,197,94,.3);}
+.motor-card.found-blue{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.3);}
+.motor-card-label{font-size:11px;font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;}
+.motor-card.found .motor-card-label{color:var(--green);}
+.motor-card.found-blue .motor-card-label{color:var(--accent);}
+.motor-card-code{font-family:var(--mono);font-size:13px;color:var(--text3);margin-bottom:3px;}
+.motor-card-name{font-size:15px;font-weight:600;color:var(--text);}
+.motor-card-loc{font-size:12px;color:var(--text3);margin-top:2px;}
+
+/* Estado chips */
+.estado-chips{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.estado-chip{padding:12px 8px;border-radius:8px;border:1px solid var(--border);cursor:pointer;text-align:center;transition:all .15s;background:var(--bg2);}
+.estado-chip:hover{border-color:var(--border2);}
+.estado-chip .e-dot{width:8px;height:8px;border-radius:50%;margin:0 auto 6px;}
+.estado-chip .e-lbl{font-size:11px;font-weight:500;color:var(--text2);}
+.estado-chip.sel-green{border-color:var(--green);background:var(--green-bg);}
+.estado-chip.sel-green .e-lbl{color:var(--green);}
+.estado-chip.sel-amber{border-color:var(--amber);background:var(--amber-bg);}
+.estado-chip.sel-amber .e-lbl{color:var(--amber);}
+.estado-chip.sel-red{border-color:var(--red);background:var(--red-bg);}
+.estado-chip.sel-red .e-lbl{color:var(--red);}
+.estado-chip.sel-gray{border-color:var(--gray);background:var(--gray-bg);}
+.estado-chip.sel-gray .e-lbl{color:var(--gray);}
+
+/* Confirmación */
+.conf-header{text-align:center;padding:24px 0 20px;}
+.conf-icon{font-size:44px;margin-bottom:10px;}
+.conf-title{font-size:18px;font-weight:600;color:var(--text);}
+.conf-sub{font-size:13px;color:var(--text3);margin-top:4px;}
+.conf-rows{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.conf-row{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);}
+.conf-row:last-child{border-bottom:none;}
+.conf-row-label{font-size:12px;color:var(--text3);}
+.conf-row-value{font-size:13px;color:var(--text);font-weight:500;text-align:right;max-width:60%;}
+
+/* Footer fijo técnico */
+.tec-footer{background:var(--bg2);border-top:1px solid var(--border);padding:16px 20px;position:sticky;bottom:0;}
+.tec-footer-inner{display:flex;gap:10px;max-width:500px;margin:0 auto;}
+.tec-btn-back{flex:1;padding:13px;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;background:var(--bg3);color:var(--text2);border:1px solid var(--border);}
+.tec-btn-next{flex:2;padding:13px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;background:var(--accent);color:white;border:none;}
+.tec-btn-next:hover{background:var(--accent2);}
+.tec-btn-next.green{background:rgba(34,197,94,.2);color:var(--green);border:1px solid rgba(34,197,94,.3);}
+.tec-btn-next.green:hover{background:rgba(34,197,94,.3);}
+</style>
+</head>
+<body>
+
+<!-- ══════════ JEFE ══════════ -->
+<div id="jefe-app" class="app" style="display:none;">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">MotorControl</div>
+      <div class="sidebar-sub">Panel de jefatura</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Principal</div>
+      <div class="nav-item active" onclick="showView('dashboard')">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><rect x="1" y="1" width="5.5" height="5.5" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="5.5" height="5.5" rx="1" fill="currentColor" opacity=".4"/><rect x="1" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor" opacity=".4"/><rect x="8.5" y="8.5" width="5.5" height="5.5" rx="1" fill="currentColor" opacity=".4"/></svg>
+        Panel general
+      </div>
+      <div class="nav-item" onclick="showView('motores')">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="7.5" r="6" stroke="currentColor" stroke-width="1.2"/><circle cx="7.5" cy="7.5" r="2" fill="currentColor"/><path d="M7.5 2v2M7.5 11v2M2 7.5h2M11 7.5h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Motores
+      </div>
+      <div class="nav-section">Gestión</div>
+      <div class="nav-item" onclick="showView('intervenciones')">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><path d="M2 4h11M2 7.5h11M2 11h7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Intervenciones
+      </div>
+      <div class="nav-item" onclick="showView('tecnicos')">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><circle cx="7.5" cy="5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M2.5 13c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Técnicos
+      </div>
+      <div class="nav-section">Acceso</div>
+      <div class="nav-item" onclick="copyTecLink()">
+        <svg class="nav-icon" viewBox="0 0 15 15" fill="none"><path d="M5 4.5h5M5 7.5h5M5 10.5h3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><rect x="1.5" y="1.5" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
+        Copiar link técnicos
+      </div>
+    </nav>
+  </div>
+  <div class="jefe-main">
+    <div class="view active" id="view-dashboard">
+      <div class="topbar"><div><div class="topbar-title">Panel general</div><div class="topbar-sub" id="dashboard-date"></div></div><button class="btn btn-secondary" onclick="loadDashboard()">↻ Actualizar</button></div>
+      <div class="content">
+        <div class="metrics">
+          <div class="metric"><div class="metric-label">Total motores</div><div class="metric-value blue" id="met-total">—</div></div>
+          <div class="metric"><div class="metric-label">Operativos</div><div class="metric-value green" id="met-ok">—</div></div>
+          <div class="metric"><div class="metric-label">Con fallas</div><div class="metric-value amber" id="met-fallas">—</div></div>
+          <div class="metric"><div class="metric-label">Críticos</div><div class="metric-value red" id="met-criticos">—</div></div>
+        </div>
+        <div class="table-wrap"><div class="table-header-row"><div class="table-title">Últimos motores</div><button class="btn btn-secondary" onclick="showView('motores')">Ver todos</button></div><div id="dashboard-table"><div class="loading">Cargando...</div></div></div>
+        <div class="table-wrap"><div class="table-header-row"><div class="table-title">Últimas intervenciones</div><button class="btn btn-secondary" onclick="showView('intervenciones')">Ver todas</button></div><div id="dashboard-iv"><div class="loading">Cargando...</div></div></div>
+      </div>
+    </div>
+    <div class="view" id="view-motores">
+      <div class="topbar"><div><div class="topbar-title">Motores</div><div class="topbar-sub" id="motores-count"></div></div><div style="display:flex;gap:10px;"><input id="search-input" type="text" placeholder="Buscar..." style="width:170px;" oninput="filterMotores()"><select id="filter-estado" onchange="filterMotores()" style="width:150px;"><option value="">Todos los estados</option><option value="nuevo">Nuevo</option><option value="recien_mantenido">Recién mantenido</option><option value="con_fallas">Con fallas</option><option value="en_seguimiento">En seguimiento</option><option value="inoperativo">Inoperativo</option><option value="para_retiro">Para retiro</option></select></div></div>
+      <div class="content"><div class="table-wrap"><div id="motores-table"><div class="loading">Cargando...</div></div></div></div>
+    </div>
+    <div class="view" id="view-intervenciones">
+      <div class="topbar"><div><div class="topbar-title">Intervenciones</div><div class="topbar-sub">Historial completo de trabajo</div></div></div>
+      <div class="content"><div class="table-wrap"><div id="intervenciones-table"><div class="loading">Cargando...</div></div></div></div>
+    </div>
+    <div class="view" id="view-tecnicos">
+      <div class="topbar"><div><div class="topbar-title">Técnicos</div></div><button class="btn btn-primary" onclick="openModal('modal-tecnico')">+ Agregar</button></div>
+      <div class="content"><div class="table-wrap"><div id="tecnicos-table"><div class="loading">Cargando...</div></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ TÉCNICO ══════════ -->
+<div id="tec-app" class="tec-wrap" style="display:none;">
+  <div class="tec-header">
+    <button class="tec-back" id="tec-back-btn" onclick="tecBack()">‹</button>
+    <div class="tec-header-info">
+      <div class="tec-header-title" id="tec-htitle">MotorControl</div>
+      <div class="tec-header-sub" id="tec-hsub">¿Qué vas a hacer hoy?</div>
+    </div>
+  </div>
+  <div class="tec-progress" id="tec-progress" style="display:none;">
+    <div class="progress-info"><span class="progress-label" id="prog-label"></span><span class="progress-count" id="prog-count"></span></div>
+    <div class="progress-track"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+  </div>
+  <div class="tec-step-body" id="tec-step-body"></div>
+  <div class="tec-footer" id="tec-footer" style="display:none;">
+    <div class="tec-footer-inner">
+      <button class="tec-btn-back" id="tec-btn-back" onclick="tecBack()">‹ Atrás</button>
+      <button class="tec-btn-next" id="tec-btn-next" onclick="tecNext()">Siguiente ›</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal-overlay" id="modal-detalle">
+  <div class="modal">
+    <div class="modal-header"><div><div style="font-size:11px;color:var(--text3);margin-bottom:3px;" id="det-codigo"></div><div class="modal-title" id="det-titulo"></div></div><button class="modal-close" onclick="closeModal('modal-detalle')">×</button></div>
+    <div class="modal-body" id="det-body"></div>
+    <div class="modal-footer"><button class="btn btn-danger" onclick="eliminarMotor()">Eliminar</button><button class="btn btn-secondary" onclick="closeModal('modal-detalle')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- MODAL TECNICO -->
+<div class="modal-overlay" id="modal-tecnico">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header"><div class="modal-title">Agregar técnico</div><button class="modal-close" onclick="closeModal('modal-tecnico')">×</button></div>
+    <div class="modal-body"><div class="field"><label>Nombre completo</label><input id="tecnico-nombre" type="text" placeholder="Ej: Carlos Rojas"></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-tecnico')">Cancelar</button><button class="btn btn-primary" onclick="guardarTecnico()">Guardar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SURL='https://tsrdplqowefoxryhxves.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzcmRwbHFvd2Vmb3hyeWh4dmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNjg3NDUsImV4cCI6MjA5Mjg0NDc0NX0.y1Ocv3MfVLD9ilcoyRPm45Kk6Y9Q7tCrwa5LvpSej9E';
+const sb=supabase.createClient(SURL,SKEY);
+const isTec=new URLSearchParams(location.search).get('modo')==='tecnico';
+document.getElementById(isTec?'tec-app':'jefe-app').style.display='flex';
+
+/* ── HELPERS ── */
+let allMotores=[],currentMotorId=null;
+function showToast(msg,type='success'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function estadoBadge(e){const m={nuevo:['badge-green','Nuevo'],recien_mantenido:['badge-green','Recién mantenido'],con_fallas:['badge-amber','Con fallas'],en_seguimiento:['badge-amber','En seguimiento'],inoperativo:['badge-red','Inoperativo'],para_retiro:['badge-gray','Para retiro']};const[c,l]=m[e]||['badge-gray',e||'—'];return`<span class="badge ${c}">${l}</span>`;}
+function tipoLabel(t){return{registro:'Registro',mantencion:'Mantención preventiva',arreglo:'Arreglo',cambio_rodamiento:'Cambio rodamiento',cambio_motor:'Cambio de motor',reporte_falla:'Reporte de falla'}[t]||t;}
+
+/* ════════ JEFE ════════ */
+window.onload=async()=>{
+  if(!isTec){document.getElementById('dashboard-date').textContent=new Date().toLocaleDateString('es-CL',{weekday:'long',year:'numeric',month:'long',day:'numeric'});await loadDashboard();}
+  else{await tecInit();}
+};
+function showView(v){
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const idx=['dashboard','motores',null,'intervenciones','tecnicos'].indexOf(v);
+  if(idx>=0) document.querySelectorAll('.nav-item')[idx]?.classList.add('active');
+  if(v==='dashboard')loadDashboard();
+  if(v==='motores')loadMotores();
+  if(v==='intervenciones')loadIntervenciones();
+  if(v==='tecnicos')loadTecnicos();
+}
+function copyTecLink(){const u=location.href.split('?')[0]+'?modo=tecnico';navigator.clipboard.writeText(u).then(()=>showToast('Link copiado — compártelo con tus técnicos'));}
+async function loadDashboard(){
+  const{data}=await sb.from('motores').select('*').order('fecha_registro',{ascending:false});
+  if(!data)return; allMotores=data;
+  document.getElementById('met-total').textContent=data.length;
+  document.getElementById('met-ok').textContent=data.filter(m=>['nuevo','recien_mantenido'].includes(m.estado)).length;
+  document.getElementById('met-fallas').textContent=data.filter(m=>['con_fallas','en_seguimiento'].includes(m.estado)).length;
+  document.getElementById('met-criticos').textContent=data.filter(m=>['inoperativo','para_retiro'].includes(m.estado)).length;
+  document.getElementById('dashboard-table').innerHTML=data.length?renderMotoresTable(data.slice(0,6)):'<div class="empty"><div class="empty-title">Sin motores registrados</div></div>';
+  const{data:iv}=await sb.from('intervenciones').select('*,motores(codigo)').order('fecha',{ascending:false}).limit(6);
+  document.getElementById('dashboard-iv').innerHTML=iv&&iv.length?`<table><thead><tr><th>Motor</th><th>Tipo</th><th>Técnico</th><th>Fecha</th></tr></thead><tbody>${iv.map(i=>`<tr><td><span class="motor-code">${i.motores?.codigo||'—'}</span></td><td>${tipoLabel(i.tipo)}</td><td>${i.realizado_por||'—'}</td><td style="font-size:12px;color:var(--text3);">${new Date(i.fecha).toLocaleDateString('es-CL')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="empty-title">Sin intervenciones aún</div></div>';
+}
+async function loadMotores(){
+  const{data}=await sb.from('motores').select('*').order('fecha_registro',{ascending:false});
+  if(!data)return; allMotores=data;
+  document.getElementById('motores-count').textContent=data.length+' motores';
+  renderMotoresView(data);
+}
+function filterMotores(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const e=document.getElementById('filter-estado').value;
+  renderMotoresView(allMotores.filter(m=>(!q||(m.codigo||'').toLowerCase().includes(q)||(m.linea||'').toLowerCase().includes(q)||(m.marca||'').toLowerCase().includes(q))&&(!e||m.estado===e)));
+}
+function renderMotoresView(data){document.getElementById('motores-table').innerHTML=data.length?renderMotoresTable(data):'<div class="empty"><div class="empty-title">Sin resultados</div></div>';}
+function renderMotoresTable(data){return`<table><thead><tr><th>Código</th><th>Ubicación</th><th>Motor</th><th>Rodamientos</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>${data.map(m=>`<tr onclick="verMotor('${m.id}')" style="cursor:pointer;"><td><div class="motor-code">${m.codigo}</div><div style="font-size:10px;color:var(--text3);">${m.tipo_registro==='stock'?'📦 Bodega':'🏭 Planta'}</div></td><td><div>${m.linea||'—'}</div><div style="font-size:11px;color:var(--text3);">${m.equipo||''}</div></td><td><div style="font-size:12px;">${m.marca||'—'}${m.potencia_kw?' · '+m.potencia_kw+' kW':''}</div><div style="font-size:11px;color:var(--text3);">${m.voltaje?m.voltaje+'V':''} ${m.rpm?'· '+m.rpm+' rpm':''}</div></td><td style="font-family:var(--mono);font-size:12px;">${m.rodamiento_delantero||'—'}<br><span style="color:var(--text3);">${m.rodamiento_trasero||''}</span></td><td>${estadoBadge(m.estado)}</td><td style="font-size:12px;color:var(--text3);">${new Date(m.fecha_registro).toLocaleDateString('es-CL')}</td></tr>`).join('')}</tbody></table>`;}
+async function loadIntervenciones(){
+  const{data}=await sb.from('intervenciones').select('*,motores(codigo,linea)').order('fecha',{ascending:false});
+  document.getElementById('intervenciones-table').innerHTML=data&&data.length?`<table><thead><tr><th>Motor</th><th>Tipo</th><th>Descripción</th><th>Técnico</th><th>Fecha</th></tr></thead><tbody>${data.map(i=>`<tr><td><span class="motor-code">${i.motores?.codigo||'—'}</span><div style="font-size:11px;color:var(--text3);">${i.motores?.linea||''}</div></td><td>${tipoLabel(i.tipo)}</td><td style="font-size:12px;color:var(--text2);max-width:180px;">${i.descripcion||'—'}</td><td>${i.realizado_por||'—'}</td><td style="font-size:12px;color:var(--text3);">${new Date(i.fecha).toLocaleDateString('es-CL')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="empty-title">Sin intervenciones</div></div>';
+}
+async function loadTecnicos(){
+  const{data}=await sb.from('tecnicos').select('*').order('nombre');
+  document.getElementById('tecnicos-table').innerHTML=data&&data.length?`<table><thead><tr><th>Nombre</th><th>Estado</th><th></th></tr></thead><tbody>${data.map(t=>`<tr><td>${t.nombre}</td><td>${t.activo?'<span class="badge badge-green">Activo</span>':'<span class="badge badge-gray">Inactivo</span>'}</td><td><button class="btn btn-secondary" style="font-size:12px;padding:5px 10px;" onclick="toggleTec('${t.id}',${t.activo})">${t.activo?'Desactivar':'Activar'}</button></td></tr>`).join('')}</tbody></table>`:'<div class="empty"><div class="empty-title">Sin técnicos</div></div>';
+}
+async function guardarTecnico(){
+  const n=document.getElementById('tecnico-nombre').value.trim();
+  if(!n){showToast('Ingresa un nombre','error');return;}
+  await sb.from('tecnicos').insert([{nombre:n}]);
+  document.getElementById('tecnico-nombre').value='';
+  closeModal('modal-tecnico'); showToast('Técnico agregado'); loadTecnicos();
+}
+async function toggleTec(id,a){await sb.from('tecnicos').update({activo:!a}).eq('id',id);loadTecnicos();}
+async function verMotor(id){
+  const{data:m}=await sb.from('motores').select('*').eq('id',id).single();
+  if(!m)return; currentMotorId=id;
+  document.getElementById('det-codigo').textContent=m.codigo;
+  document.getElementById('det-titulo').textContent=(m.marca||'Motor')+(m.potencia_kw?' — '+m.potencia_kw+' kW':'');
+  const{data:iv}=await sb.from('intervenciones').select('*').eq('motor_id',id).order('fecha',{ascending:false});
+  document.getElementById('det-body').innerHTML=`<div class="detail-grid" style="margin-bottom:16px;"><div class="detail-field"><div class="detail-label">Línea</div><div class="detail-value">${m.linea||'—'}</div></div><div class="detail-field"><div class="detail-label">Equipo</div><div class="detail-value">${m.equipo||'—'}</div></div><div class="detail-field"><div class="detail-label">Marca</div><div class="detail-value">${m.marca||'—'}</div></div><div class="detail-field"><div class="detail-label">kW / RPM</div><div class="detail-value mono">${m.potencia_kw||'—'} kW · ${m.rpm||'—'} rpm</div></div><div class="detail-field"><div class="detail-label">Rodamiento del.</div><div class="detail-value mono">${m.rodamiento_delantero||'—'}</div></div><div class="detail-field"><div class="detail-label">Rodamiento tras.</div><div class="detail-value mono">${m.rodamiento_trasero||'—'}</div></div>${m.tiene_caja?`<div class="detail-field"><div class="detail-label">Caja reductora</div><div class="detail-value">${m.caja_marca||''} ${m.caja_modelo||''} i:${m.caja_relacion||'—'}</div></div>`:''}</div><div style="margin-bottom:10px;">${estadoBadge(m.estado)}</div>${m.fallas?.length?'<div style="margin-bottom:10px;">'+m.fallas.map(f=>`<span class="tag">${f}</span>`).join('')+'</div>':''}${m.observaciones?`<div style="font-size:13px;color:var(--text2);background:var(--bg3);padding:12px;border-radius:8px;border:1px solid var(--border);margin-bottom:10px;">${m.observaciones}</div>`:''}<div style="font-size:11px;color:var(--text3);">Registrado por: ${m.registrado_por||'—'} · ${new Date(m.fecha_registro).toLocaleString('es-CL')}</div>${iv&&iv.length?'<div style="margin-top:16px;"><div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Historial</div>'+iv.map(i=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);"><div style="font-size:13px;font-weight:500;">${tipoLabel(i.tipo)}</div><div style="font-size:12px;color:var(--text3);">${i.realizado_por||''} · ${new Date(i.fecha).toLocaleDateString('es-CL')}</div>${i.descripcion?`<div style="font-size:12px;color:var(--text2);margin-top:2px;">${i.descripcion}</div>`:''}</div>`).join('')+'</div>':''}`;
+  openModal('modal-detalle');
+}
+async function eliminarMotor(){
+  if(!currentMotorId||!confirm('¿Eliminar este motor?'))return;
+  await sb.from('intervenciones').delete().eq('motor_id',currentMotorId);
+  await sb.from('motores').delete().eq('id',currentMotorId);
+  closeModal('modal-detalle'); showToast('Motor eliminado'); loadDashboard();
+}
+
+/* ════════════════════════════════
+   TÉCNICO — motor paso a paso
+   ════════════════════════════════ */
+// Estado global del flujo
+let S={accion:null,paso:0,pasos:[],datos:{},motorSale:null,motorEntra:null,scanning:false,stream:null,scanInterval:null,tecnicos:[]};
+
+const FLUJOS={
+  registro:['accion','qr_nuevo','ubicacion','placa','caja','rodamientos','estado','tecnico','confirmar'],
+  mantencion:['accion','qr','trabajos','estado_post','tecnico','confirmar'],
+  arreglo:['accion','qr','fallas_corregidas','estado_post_arreglo','tecnico','confirmar'],
+  cambio_rodamiento:['accion','qr','rodamiento_nuevo','obs','tecnico','confirmar'],
+  cambio_motor:['accion','qr_sale','qr_entra','motivo','obs','tecnico','confirmar'],
+  reporte_falla:['accion','qr','fallas_reporte','tecnico','confirmar'],
+};
+
+const PASO_LABELS={
+  accion:'¿Qué trabajo vas a hacer?',qr:'Identificar motor',qr_nuevo:'Código del motor',
+  qr_sale:'Motor que SALE',qr_entra:'Motor que ENTRA',
+  ubicacion:'Ubicación',placa:'Datos de la placa',caja:'Caja reductora',
+  rodamientos:'Rodamientos',estado:'Estado del motor',
+  trabajos:'Trabajos realizados',estado_post:'Estado tras mantención',
+  fallas_corregidas:'Fallas corregidas',estado_post_arreglo:'Estado tras arreglo',
+  rodamiento_nuevo:'Rodamiento reemplazado',obs:'Observaciones',
+  motivo:'Motivo del cambio',fallas_reporte:'Fallas detectadas',
+  tecnico:'Técnico responsable',confirmar:'Confirmar y guardar',
+};
+
+async function tecInit(){
+  const{data}=await sb.from('tecnicos').select('*').eq('activo',true).order('nombre');
+  S.tecnicos=data||[];
+  S.pasos=FLUJOS.registro;
+  renderPaso('accion');
+}
+
+function setPaso(nombre){
+  S.paso=S.pasos.indexOf(nombre);
+  renderPaso(nombre);
+}
+
+function renderPaso(nombre){
+  const total=S.pasos.length;
+  const idx=S.pasos.indexOf(nombre);
+  const pct=Math.round((idx/(total-1))*100);
+
+  // Header
+  document.getElementById('tec-htitle').textContent=PASO_LABELS[nombre]||nombre;
+  document.getElementById('tec-hsub').textContent=S.accion?({registro:'Registro nuevo motor',mantencion:'Mantención preventiva',arreglo:'Arreglo / Reparación',cambio_rodamiento:'Cambio de rodamiento',cambio_motor:'Cambio de motor',reporte_falla:'Reporte de falla'}[S.accion]||''):'Selecciona el tipo de trabajo';
+
+  // Barra progreso
+  const showProg=nombre!=='accion';
+  document.getElementById('tec-progress').style.display=showProg?'block':'none';
+  if(showProg){
+    document.getElementById('prog-label').textContent=PASO_LABELS[nombre];
+    document.getElementById('prog-count').textContent=`Paso ${idx} de ${total-1}`;
+    document.getElementById('prog-fill').style.width=pct+'%';
+  }
+
+  // Back btn
+  document.getElementById('tec-back-btn').style.display=nombre!=='accion'?'block':'none';
+
+  // Footer
+  const showFooter=nombre!=='accion';
+  document.getElementById('tec-footer').style.display=showFooter?'block':'none';
+  const btnNext=document.getElementById('tec-btn-next');
+  if(nombre==='confirmar'){btnNext.textContent='✓ Guardar todo';btnNext.className='tec-btn-next green';}
+  else{btnNext.textContent='Siguiente ›';btnNext.className='tec-btn-next';}
+
+  // Render contenido
+  const body=document.getElementById('tec-step-body');
+  body.innerHTML=renderStepHTML(nombre);
+  afterRender(nombre);
+}
+
+function renderStepHTML(nombre){
+  switch(nombre){
+    case 'accion': return renderAccion();
+    case 'qr': case 'qr_nuevo': case 'qr_sale': case 'qr_entra': return renderQR(nombre);
+    case 'ubicacion': return renderUbicacion();
+    case 'placa': return renderPlaca();
+    case 'caja': return renderCaja();
+    case 'rodamientos': return renderRodamientos();
+    case 'estado': return renderEstado();
+    case 'trabajos': return renderTrabajos();
+    case 'estado_post': return renderEstadoPost(['recien_mantenido','en_seguimiento','con_fallas'],['Recién mantenido — OK','Requiere seguimiento','Presenta fallas']);
+    case 'fallas_corregidas': return renderFallas('fallas_corregidas');
+    case 'estado_post_arreglo': return renderEstadoPost(['recien_mantenido','en_seguimiento','con_fallas','inoperativo'],['Operativo — arreglado','Requiere seguimiento','Persisten fallas','Inoperativo']);
+    case 'rodamiento_nuevo': return renderRodamientoNuevo();
+    case 'motivo': return renderMotivo();
+    case 'fallas_reporte': return renderFallas('fallas_reporte');
+    case 'obs': return renderObs();
+    case 'tecnico': return renderTecnico();
+    case 'confirmar': return renderConfirmar();
+    default: return '<p style="color:var(--text3);">Paso no encontrado</p>';
+  }
+}
+
+function renderAccion(){
+  const acciones=[
+    {id:'registro',icon:'📋',color:'rgba(59,130,246,.15)',name:'Registro nuevo motor',desc:'Primer ingreso al sistema'},
+    {id:'mantencion',icon:'🔧',color:'rgba(34,197,94,.15)',name:'Mantención preventiva',desc:'Engrase, revisión, lubricación'},
+    {id:'arreglo',icon:'⚙️',color:'rgba(245,158,11,.15)',name:'Arreglo / Reparación',desc:'Corrección de falla detectada'},
+    {id:'cambio_rodamiento',icon:'🔩',color:'rgba(107,114,128,.15)',name:'Cambio de rodamiento',desc:'Reemplazo de descanso'},
+    {id:'cambio_motor',icon:'🔄',color:'rgba(239,68,68,.15)',name:'Cambio de motor',desc:'Motor sale y otro entra'},
+    {id:'reporte_falla',icon:'⚠️',color:'rgba(239,68,68,.1)',name:'Reportar falla',desc:'Registrar problema detectado'},
+  ];
+  return`<div class="accion-list">${acciones.map(a=>`<div class="accion-card${S.accion===a.id?' selected':''}" onclick="elegirAccion('${a.id}',this)"><div class="accion-icon" style="background:${a.color};">${a.icon}</div><div class="accion-texts"><div class="accion-name">${a.name}</div><div class="accion-desc">${a.desc}</div></div><div class="accion-arrow">›</div></div>`).join('')}</div>`;
+}
+
+function renderQR(tipo){
+  let label='',hint='';
+  if(tipo==='qr_sale'){label='Motor que SALE';hint='Escanea el QR del motor que vas a retirar';}
+  else if(tipo==='qr_entra'){label='Motor que ENTRA';hint='Escanea el QR del motor de repuesto';}
+  else if(tipo==='qr_nuevo'){label='Motor nuevo';hint='Ingresa el código que quieres asignar o escanea su QR';}
+  else{label='Motor';hint='Escanea el QR o ingresa el código manualmente';}
+
+  const motorCard=tipo==='qr_entra'?
+    (S.motorEntra?`<div class="motor-card found-blue"><div class="motor-card-label">Motor entrante identificado</div><div class="motor-card-code">${S.motorEntra.codigo}</div><div class="motor-card-name">${S.motorEntra.marca||''} ${S.motorEntra.potencia_kw?'— '+S.motorEntra.potencia_kw+' kW':''}</div></div>`:''):
+    (S.motorSale?`<div class="motor-card found"><div class="motor-card-label">${tipo==='qr_nuevo'?'Motor listo para registrar':'Motor identificado'}</div><div class="motor-card-code">${S.motorSale.codigo}</div><div class="motor-card-name">${S.motorSale.marca||''} ${S.motorSale.potencia_kw?'— '+S.motorSale.potencia_kw+' kW':''}</div><div class="motor-card-loc">${S.motorSale.linea||''} ${S.motorSale.equipo?'· '+S.motorSale.equipo:''}</div></div>`:'');
+
+  return`
+    ${motorCard}
+    <div class="qr-box">
+      <div class="qr-video-wrap" id="qr-vwrap"><video id="qr-video" playsinline></video><div class="qr-scan-frame"><div class="qr-scan-frame-inner"></div></div></div>
+      <div class="qr-btns">
+        <button class="btn btn-primary" id="btn-scan" onclick="startScan('${tipo}')" style="width:100%;">📷 Escanear código QR</button>
+        <button class="btn btn-secondary" id="btn-stop" onclick="stopScan()" style="width:100%;display:none;">✕ Detener cámara</button>
+      </div>
+    </div>
+    <div class="qr-or"><span>o ingresa el código manualmente</span></div>
+    <div class="tec-field"><label>${label}</label><input id="qr-input" type="text" placeholder="Ej: MOT-047" value="${tipo==='qr_entra'?(S.motorEntra?.codigo||''):(S.motorSale?.codigo||'')}"></div>
+    <button class="btn btn-primary" style="width:100%;padding:12px;" onclick="buscarMotorTec('${tipo}')">Buscar motor</button>`;
+}
+
+function renderUbicacion(){
+  const d=S.datos;
+  return`<div class="step-desc">¿En qué parte de la planta está instalado este motor?</div>
+  <div class="tec-field"><label>Línea / Área</label><select id="f-linea"><option value="">Selecciona...</option>${['Línea 1 — Recepción','Línea 2 — Lavado','Línea 3 — Calibradora','Línea 4 — Empaque','Sala de frío','Bodega','Otro'].map(l=>`<option${d.linea===l?' selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="tec-field"><label>Equipo / Máquina específica</label><input id="f-equipo" type="text" placeholder="Ej: Cinta transportadora 2" value="${d.equipo||''}"></div>`;
+}
+
+function renderPlaca(){
+  const d=S.datos;
+  return`<div class="step-desc">Ingresa los datos que aparecen en la placa del motor.</div>
+  <div class="tec-grid2">
+    <div class="tec-field"><label>Marca</label><input id="f-marca" type="text" placeholder="Ej: WEG" value="${d.marca||''}"></div>
+    <div class="tec-field"><label>Potencia (kW)</label><input id="f-potencia" type="number" step="0.1" placeholder="Ej: 15" value="${d.potencia_kw||''}"></div>
+    <div class="tec-field"><label>Voltaje (V)</label><input id="f-voltaje" type="text" placeholder="Ej: 380" value="${d.voltaje||''}"></div>
+    <div class="tec-field"><label>RPM</label><input id="f-rpm" type="number" placeholder="Ej: 1450" value="${d.rpm||''}"></div>
+    <div class="tec-field"><label>Corriente (A)</label><input id="f-corriente" type="number" step="0.1" placeholder="Ej: 28.5" value="${d.corriente||''}"></div>
+    <div class="tec-field"><label>N° de serie</label><input id="f-serie" type="text" placeholder="Opcional" value="${d.numero_serie||''}"></div>
+  </div>`;
+}
+
+function renderCaja(){
+  const d=S.datos;
+  return`<div class="step-desc">¿Este motor tiene caja reductora acoplada?</div>
+  <div class="toggle-row" onclick="document.getElementById('tc').checked=!document.getElementById('tc').checked;document.getElementById('caja-extra').style.display=document.getElementById('tc').checked?'block':'none'">
+    <span class="toggle-label">¿Tiene caja reductora?</span>
+    <label class="toggle" onclick="event.stopPropagation()"><input type="checkbox" id="tc" ${d.tiene_caja?'checked':''}><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+  </div>
+  <div id="caja-extra" style="display:${d.tiene_caja?'block':'none'}">
+    <div class="tec-grid2">
+      <div class="tec-field"><label>Marca</label><input id="f-cj-marca" type="text" placeholder="Ej: Bonfiglioli" value="${d.caja_marca||''}"></div>
+      <div class="tec-field"><label>Modelo</label><input id="f-cj-modelo" type="text" placeholder="Ej: R82" value="${d.caja_modelo||''}"></div>
+      <div class="tec-field"><label>Relación (i)</label><input id="f-cj-rel" type="text" placeholder="Ej: 20" value="${d.caja_relacion||''}"></div>
+      <div class="tec-field"><label>N° serie</label><input id="f-cj-serie" type="text" placeholder="Opcional" value="${d.caja_serie||''}"></div>
+    </div>
+  </div>`;
+}
+
+function renderRodamientos(){
+  const d=S.datos;
+  return`<div class="step-desc">¿Qué rodamientos (descansos) usa este motor?</div>
+  <div class="tec-field"><label>Rodamiento delantero</label><input id="f-rd" type="text" placeholder="Ej: 6205-2RS" value="${d.rodamiento_delantero||''}"></div>
+  <div class="tec-field"><label>Rodamiento trasero</label><input id="f-rt" type="text" placeholder="Ej: 6308" value="${d.rodamiento_trasero||''}"></div>
+  <div class="tec-field"><label>Observaciones (opcional)</label><textarea id="f-obs" placeholder="Estado general, novedades...">${d.observaciones||''}</textarea></div>`;
+}
+
+function renderEstado(){
+  const estados=[{v:'nuevo',c:'green',l:'Nuevo'},{v:'recien_mantenido',c:'green',l:'Recién mantenido'},{v:'con_fallas',c:'amber',l:'Con fallas'},{v:'en_seguimiento',c:'amber',l:'En seguimiento'},{v:'inoperativo',c:'red',l:'Inoperativo'},{v:'para_retiro',c:'gray',l:'Para retiro'}];
+  const cur=S.datos.estado||'nuevo';
+  const fallas=['Ruido anormal','Muy caliente','Detenciones','Con saltos','Descentrado','Vibración','Pérdida de potencia','Botando aceite','Otra falla'];
+  const showFallas=['con_fallas','en_seguimiento','inoperativo'].includes(cur);
+  return`<div class="step-desc">¿En qué condición está el motor al momento del registro?</div>
+  <div class="estado-chips" style="margin-bottom:20px;">${estados.map(e=>`<div class="estado-chip${cur===e.v?' sel-'+e.c:''}" onclick="selEstado(this,'${e.v}','${e.c}')"><div class="e-dot" style="background:var(--${e.c});"></div><div class="e-lbl">${e.l}</div></div>`).join('')}</div>
+  <div id="fallas-wrap" style="display:${showFallas?'block':'none'}">
+    <div class="tec-field"><label style="margin-bottom:10px;">Fallas que presenta (marca las que apliquen)</label><div class="chips-grid">${fallas.map(f=>`<div class="chip${(S.datos.fallas||[]).includes(f)?' active-red':''}" onclick="toggleFalla(this,'${f}')">${f}</div>`).join('')}</div></div>
+  </div>`;
+}
+
+function renderTrabajos(){
+  const trabajos=['Engrase','Limpieza','Revisión general','Lubricación caja','Ajuste de acoples','Verificación eléctrica','Cambio de aceite caja','Apriete de pernos'];
+  return`<div class="step-desc">¿Qué trabajos realizaste en este motor?</div>
+  <div class="chips-grid">${trabajos.map(t=>`<div class="chip${(S.datos.trabajos||[]).includes(t)?' active-blue':''}" onclick="toggleChip(this,t=>'trabajos','${t}')">${t}</div>`).join('')}</div>
+  <div class="tec-field" style="margin-top:16px;"><label>Observaciones adicionales</label><textarea id="f-obs-m" placeholder="Novedades encontradas, estado del motor...">${S.datos.obs_m||''}</textarea></div>`;
+}
+
+function renderEstadoPost(vals,labels){
+  const cur=S.datos.estado_post||vals[0];
+  return`<div class="step-desc">¿Cómo quedó el motor después del trabajo?</div>
+  <div style="display:flex;flex-direction:column;gap:10px;">${vals.map((v,i)=>`<div class="accion-card${cur===v?' selected':''}" onclick="S.datos.estado_post='${v}';document.querySelectorAll('.accion-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected')"><div class="accion-texts"><div class="accion-name">${labels[i]}</div></div>${cur===v?'<div style="color:var(--accent);font-size:18px;">✓</div>':''}</div>`).join('')}</div>`;
+}
+
+function renderFallas(key){
+  const fallas=['Ruido anormal','Muy caliente','Detenciones','Con saltos','Descentrado','Vibración','Pérdida de potencia','Botando aceite','Otra falla'];
+  return`<div class="step-desc">Marca las fallas que ${key==='fallas_reporte'?'detectaste':'corregiste'}:</div>
+  <div class="chips-grid">${fallas.map(f=>`<div class="chip${(S.datos[key]||[]).includes(f)?' active-red':''}" onclick="toggleDataChip(this,'${key}','${f}')">${f}</div>`).join('')}</div>
+  <div class="tec-field" style="margin-top:16px;"><label>${key==='fallas_reporte'?'Descripción detallada':'Descripción del trabajo'}</label><textarea id="f-desc" placeholder="${key==='fallas_reporte'?'Qué observaste y cuándo...':'Qué se hizo exactamente...'}">${S.datos.desc||''}</textarea></div>`;
+}
+
+function renderRodamientoNuevo(){
+  return`<div class="step-desc">¿Qué rodamiento reemplazaste?</div>
+  <div class="tec-field"><label>Tipo de rodamiento</label><select id="f-rod-tipo"><option value="delantero"${S.datos.rod_tipo==='delantero'?' selected':''}>Delantero</option><option value="trasero"${S.datos.rod_tipo==='trasero'?' selected':''}>Trasero</option><option value="ambos"${S.datos.rod_tipo==='ambos'?' selected':''}>Ambos</option></select></div>
+  <div class="tec-field"><label>Código del rodamiento nuevo</label><input id="f-rod-cod" type="text" placeholder="Ej: 6205-2RS" value="${S.datos.rod_cod||''}"></div>`;
+}
+
+function renderMotivo(){
+  const opciones=[{v:'fin_vida_util',l:'Fin de vida útil'},{v:'falla_grave',l:'Falla grave / irreparable'},{v:'mantencion_mayor',l:'Mantención mayor externa'},{v:'otro',l:'Otro motivo'}];
+  const cur=S.datos.motivo||'fin_vida_util';
+  return`<div class="step-desc">¿Por qué se está cambiando el motor?</div>
+  <div style="display:flex;flex-direction:column;gap:10px;">${opciones.map(o=>`<div class="accion-card${cur===o.v?' selected':''}" onclick="S.datos.motivo='${o.v}';document.querySelectorAll('.accion-card').forEach(c=>c.classList.remove('selected'));this.classList.add('selected')"><div class="accion-texts"><div class="accion-name">${o.l}</div></div>${cur===o.v?'<div style="color:var(--accent);font-size:18px;">✓</div>':''}</div>`).join('')}</div>`;
+}
+
+function renderObs(){
+  return`<div class="step-desc">Agrega cualquier detalle adicional sobre el trabajo realizado.</div>
+  <div class="tec-field"><label>Observaciones</label><textarea id="f-obs-g" style="height:140px;" placeholder="Detalles del trabajo, estado del motor retirado, novedades...">${S.datos.obs_g||''}</textarea></div>`;
+}
+
+function renderTecnico(){
+  return`<div class="step-desc">¿Quién realizó este trabajo?</div>
+  <div class="tec-field"><label>Tu nombre</label><select id="f-tec"><option value="">Selecciona...</option>${S.tecnicos.map(t=>`<option value="${t.nombre}"${S.datos.tecnico===t.nombre?' selected':''}>${t.nombre}</option>`).join('')}</select></div>`;
+}
+
+function renderConfirmar(){
+  const accionLabels={registro:'Registro de motor nuevo',mantencion:'Mantención preventiva',arreglo:'Arreglo / Reparación',cambio_rodamiento:'Cambio de rodamiento',cambio_motor:'Cambio de motor',reporte_falla:'Reporte de falla'};
+  const icons={registro:'📋',mantencion:'🔧',arreglo:'⚙️',cambio_rodamiento:'🔩',cambio_motor:'🔄',reporte_falla:'⚠️'};
+  const rows=[];
+  rows.push({l:'Trabajo',v:accionLabels[S.accion]});
+  rows.push({l:'Motor',v:S.motorSale?.codigo||'—'});
+  if(S.accion==='cambio_motor') rows.push({l:'Motor entrante',v:S.motorEntra?.codigo||'—'});
+  if(S.datos.linea) rows.push({l:'Ubicación',v:S.datos.linea});
+  if(S.datos.marca) rows.push({l:'Motor',v:S.datos.marca+(S.datos.potencia_kw?' · '+S.datos.potencia_kw+' kW':'')});
+  if(S.datos.estado) rows.push({l:'Estado',v:({nuevo:'Nuevo',recien_mantenido:'Recién mantenido',con_fallas:'Con fallas',en_seguimiento:'En seguimiento',inoperativo:'Inoperativo',para_retiro:'Para retiro'})[S.datos.estado]||S.datos.estado});
+  rows.push({l:'Técnico',v:S.datos.tecnico||'—'});
+  return`<div class="conf-header"><div class="conf-icon">${icons[S.accion]||'✓'}</div><div class="conf-title">${accionLabels[S.accion]}</div><div class="conf-sub">Revisa antes de guardar</div></div>
+  <div class="conf-rows">${rows.map(r=>`<div class="conf-row"><div class="conf-row-label">${r.l}</div><div class="conf-row-value">${r.v}</div></div>`).join('')}</div>`;
+}
+
+/* ── afterRender: lógica post-render ── */
+function afterRender(nombre){
+  if(nombre==='caja'){
+    document.getElementById('tc')?.addEventListener('change',function(){
+      document.getElementById('caja-extra').style.display=this.checked?'block':'none';
+    });
+  }
+}
+
+/* ── Interacciones ── */
+function elegirAccion(id,el){
+  S.accion=id; S.pasos=FLUJOS[id]; S.datos={}; S.motorSale=null; S.motorEntra=null;
+  document.querySelectorAll('.accion-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  setTimeout(()=>tecNext(),180);
+}
+
+function selEstado(el,val,color){
+  S.datos.estado=val;
+  document.querySelectorAll('.estado-chip').forEach(c=>{c.className='estado-chip';});
+  el.classList.add('sel-'+color);
+  const show=['con_fallas','en_seguimiento','inoperativo'].includes(val);
+  document.getElementById('fallas-wrap').style.display=show?'block':'none';
+  if(!show) S.datos.fallas=[];
+}
+
+function toggleFalla(el,f){
+  if(!S.datos.fallas) S.datos.fallas=[];
+  if(S.datos.fallas.includes(f)){S.datos.fallas=S.datos.fallas.filter(x=>x!==f);el.classList.remove('active-red');}
+  else{S.datos.fallas.push(f);el.classList.add('active-red');}
+}
+
+function toggleChip(el,keyFn,val){
+  const key='trabajos';
+  if(!S.datos[key]) S.datos[key]=[];
+  if(S.datos[key].includes(val)){S.datos[key]=S.datos[key].filter(x=>x!==val);el.classList.remove('active-blue');}
+  else{S.datos[key].push(val);el.classList.add('active-blue');}
+}
+
+function toggleDataChip(el,key,val){
+  if(!S.datos[key]) S.datos[key]=[];
+  if(S.datos[key].includes(val)){S.datos[key]=S.datos[key].filter(x=>x!==val);el.classList.remove('active-red');}
+  else{S.datos[key].push(val);el.classList.add('active-red');}
+}
+
+/* ── QR Scanner ── */
+async function startScan(tipo){
+  try{
+    S.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    const v=document.getElementById('qr-video');
+    v.srcObject=S.stream; v.play();
+    document.getElementById('qr-vwrap').style.display='block';
+    document.getElementById('btn-scan').style.display='none';
+    document.getElementById('btn-stop').style.display='block';
+    S.scanning=true;
+    S.scanInterval=setInterval(()=>{
+      if(!S.scanning)return;
+      const c=document.createElement('canvas');
+      c.width=v.videoWidth; c.height=v.videoHeight;
+      c.getContext('2d').drawImage(v,0,0);
+      const img=c.getContext('2d').getImageData(0,0,c.width,c.height);
+      const code=jsQR(img.data,img.width,img.height);
+      if(code){const val=code.data.toUpperCase();document.getElementById('qr-input').value=val;stopScan();buscarMotorTec(tipo);}
+    },300);
+  }catch(e){showToast('No se pudo acceder a la cámara','error');}
+}
+
+function stopScan(){
+  S.scanning=false;
+  if(S.scanInterval){clearInterval(S.scanInterval);S.scanInterval=null;}
+  if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;}
+  const vw=document.getElementById('qr-vwrap');
+  if(vw) vw.style.display='none';
+  const bs=document.getElementById('btn-scan'); if(bs) bs.style.display='block';
+  const bo=document.getElementById('btn-stop'); if(bo) bo.style.display='none';
+}
+
+async function buscarMotorTec(tipo){
+  const codigo=(document.getElementById('qr-input')?.value||'').trim().toUpperCase();
+  if(!codigo){showToast('Ingresa un código','error');return;}
+  if(tipo==='qr_nuevo'){
+    S.motorSale={id:null,codigo,esNuevo:true};
+    renderPaso(tipo); return;
+  }
+  const{data,error}=await sb.from('motores').select('*').ilike('codigo',codigo).single();
+  if(error||!data){showToast('Motor no encontrado: '+codigo,'error');return;}
+  if(tipo==='qr_entra') S.motorEntra=data;
+  else S.motorSale=data;
+  renderPaso(tipo);
+}
+
+/* ── Guardar datos del paso actual ── */
+function guardarPasoActual(nombre){
+  const g=id=>document.getElementById(id);
+  switch(nombre){
+    case 'ubicacion': S.datos.linea=g('f-linea')?.value||null; S.datos.equipo=g('f-equipo')?.value||null; break;
+    case 'placa': S.datos.marca=g('f-marca')?.value||null; S.datos.potencia_kw=parseFloat(g('f-potencia')?.value)||null; S.datos.voltaje=g('f-voltaje')?.value||null; S.datos.rpm=parseInt(g('f-rpm')?.value)||null; S.datos.corriente=parseFloat(g('f-corriente')?.value)||null; S.datos.numero_serie=g('f-serie')?.value||null; break;
+    case 'caja': S.datos.tiene_caja=g('tc')?.checked||false; S.datos.caja_marca=g('f-cj-marca')?.value||null; S.datos.caja_modelo=g('f-cj-modelo')?.value||null; S.datos.caja_relacion=g('f-cj-rel')?.value||null; S.datos.caja_serie=g('f-cj-serie')?.value||null; break;
+    case 'rodamientos': S.datos.rodamiento_delantero=g('f-rd')?.value||null; S.datos.rodamiento_trasero=g('f-rt')?.value||null; S.datos.observaciones=g('f-obs')?.value||null; break;
+    case 'trabajos': S.datos.obs_m=g('f-obs-m')?.value||null; break;
+    case 'fallas_corregidas': case 'fallas_reporte': S.datos.desc=g('f-desc')?.value||null; break;
+    case 'rodamiento_nuevo': S.datos.rod_tipo=g('f-rod-tipo')?.value||null; S.datos.rod_cod=g('f-rod-cod')?.value||null; break;
+    case 'obs': S.datos.obs_g=g('f-obs-g')?.value||null; break;
+    case 'tecnico': S.datos.tecnico=g('f-tec')?.value||null; break;
+    case 'estado_post': case 'estado_post_arreglo': if(!S.datos.estado_post) S.datos.estado_post=document.querySelector('.accion-card.selected')?document.querySelector('.accion-card.selected').querySelector('.accion-name')?.textContent:'recien_mantenido'; break;
+  }
+}
+
+/* ── Navegación ── */
+function tecNext(){
+  const pasoActual=S.pasos[S.paso];
+  // Validaciones
+  if(pasoActual==='qr'||pasoActual==='qr_sale'){if(!S.motorSale){showToast('Busca el motor primero','error');return;}}
+  if(pasoActual==='qr_entra'){if(!S.motorEntra){showToast('Busca el motor entrante primero','error');return;}}
+  if(pasoActual==='qr_nuevo'){if(!S.motorSale){showToast('Ingresa el código del motor','error');return;}}
+  if(pasoActual==='tecnico'){const v=document.getElementById('f-tec')?.value;if(!v){showToast('Selecciona tu nombre','error');return;}S.datos.tecnico=v;}
+  if(pasoActual==='confirmar'){guardarTodo();return;}
+  guardarPasoActual(pasoActual);
+  stopScan();
+  S.paso++;
+  renderPaso(S.pasos[S.paso]);
+}
+
+function tecBack(){
+  if(S.paso===0){S.accion=null;S.pasos=FLUJOS.registro;S.datos={};S.motorSale=null;S.motorEntra=null;renderPaso('accion');return;}
+  guardarPasoActual(S.pasos[S.paso]);
+  stopScan();
+  S.paso--;
+  renderPaso(S.pasos[S.paso]);
+}
+
+/* ── Guardar todo ── */
+async function guardarTodo(){
+  const d=S.datos; const resp=d.tecnico;
+  let motorId=S.motorSale?.id; let desc=''; let estadoNuevo=null;
+
+  if(S.accion==='registro'){
+    const motor={codigo:S.motorSale.codigo,tipo_registro:'planta',linea:d.linea||null,equipo:d.equipo||null,marca:d.marca||null,potencia_kw:d.potencia_kw||null,voltaje:d.voltaje||null,rpm:d.rpm||null,corriente:d.corriente||null,numero_serie:d.numero_serie||null,tiene_caja:d.tiene_caja||false,caja_marca:d.caja_marca||null,caja_modelo:d.caja_modelo||null,caja_relacion:d.caja_relacion||null,caja_serie:d.caja_serie||null,rodamiento_delantero:d.rodamiento_delantero||null,rodamiento_trasero:d.rodamiento_trasero||null,estado:d.estado||'nuevo',fallas:d.fallas||[],observaciones:d.observaciones||null,registrado_por:resp};
+    const{data:mNew,error}=await sb.from('motores').insert([motor]).select().single();
+    if(error){showToast('Error: '+error.message,'error');return;}
+    motorId=mNew.id; desc='Motor registrado en sistema.';
+  }
+  if(S.accion==='mantencion'){
+    estadoNuevo=d.estado_post||'recien_mantenido';
+    desc='Mantención preventiva. Trabajos: '+((d.trabajos||[]).join(', ')||'revisión')+'. '+(d.obs_m||'');
+  }
+  if(S.accion==='arreglo'){
+    estadoNuevo=d.estado_post||'recien_mantenido';
+    desc='Arreglo. Fallas corregidas: '+((d.fallas_corregidas||[]).join(', ')||'—')+'. '+(d.desc||'');
+  }
+  if(S.accion==='cambio_rodamiento'){
+    estadoNuevo='recien_mantenido';
+    desc='Cambio de rodamiento '+(d.rod_tipo||'')+(d.rod_cod?' — nuevo: '+d.rod_cod:'')+'. '+(d.obs_g||'');
+  }
+  if(S.accion==='cambio_motor'){
+    estadoNuevo='para_retiro';
+    desc='Cambio de motor. Motivo: '+(d.motivo||'—')+'. Motor entrante: '+(S.motorEntra?.codigo||'—')+'. '+(d.obs_g||'');
+    if(S.motorEntra){await sb.from('motores').update({linea:S.motorSale?.linea,equipo:S.motorSale?.equipo,estado:'recien_mantenido'}).eq('id',S.motorEntra.id);}
+  }
+  if(S.accion==='reporte_falla'){
+    estadoNuevo='con_fallas';
+    desc='Falla reportada: '+((d.fallas_reporte||[]).join(', ')||'—')+'. '+(d.desc||'');
+  }
+
+  if(estadoNuevo&&motorId) await sb.from('motores').update({estado:estadoNuevo}).eq('id',motorId);
+
+  const{error}=await sb.from('intervenciones').insert([{motor_id:motorId,tipo:S.accion,descripcion:desc.trim(),fallas_resueltas:d.fallas||d.fallas_corregidas||d.fallas_reporte||[],realizado_por:resp}]);
+  if(error){showToast('Error al guardar: '+error.message,'error');return;}
+
+  showToast('✓ Guardado correctamente');
+  setTimeout(()=>{S={accion:null,paso:0,pasos:FLUJOS.registro,datos:{},motorSale:null,motorEntra:null,scanning:false,stream:null,scanInterval:null,tecnicos:S.tecnicos};renderPaso('accion');},1800);
+}
+</script>
+</body>
+</html>
