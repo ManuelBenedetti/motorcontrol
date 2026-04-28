@@ -575,10 +575,12 @@ async function tecInit(){
 } else {
   renderPaso('accion');
 }
+}
 function setPaso(nombre){
   S.paso=S.pasos.indexOf(nombre);
   renderPaso(nombre);
 }
+  
 
 function renderPaso(nombre){
   const total=S.pasos.length;
