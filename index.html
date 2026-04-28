@@ -348,6 +348,7 @@ const SURL='https://tsrdplqowefoxryhxves.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzcmRwbHFvd2Vmb3hyeWh4dmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNjg3NDUsImV4cCI6MjA5Mjg0NDc0NX0.y1Ocv3MfVLD9ilcoyRPm45Kk6Y9Q7tCrwa5LvpSej9E';
 const sb=supabase.createClient(SURL,SKEY);
 const isTec=new URLSearchParams(location.search).get('modo')==='tecnico';
+const UMBRALES = { chequeo: 30, overhaul: 90 };
 document.getElementById(isTec?'tec-app':'jefe-app').style.display='flex';
 
 /* ── HELPERS ── */
