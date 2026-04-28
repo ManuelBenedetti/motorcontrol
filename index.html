@@ -560,12 +560,21 @@ async function tecInit(){
   S.tecnicos=data||[];
   S.pasos=FLUJOS.registro;
 if(motorQR){
-  S.motorSale={id:null,codigo:motorQR,esNuevo:false};
-  await buscarMotorTec('qr');
+  S.accion=null;
+  S.motorSale=null;
+  renderPaso('accion');
+  setTimeout(async()=>{
+    const{data,error}=await sb.from('motores').select('*').ilike('codigo',motorQR).single();
+    if(data){
+      S.motorSale=data;
+      showToast('Motor '+motorQR+' identificado — elige el trabajo a realizar');
+    } else {
+      showToast('QR escaneado: '+motorQR+' — motor no registrado aún','error');
+    }
+  },500);
 } else {
   renderPaso('accion');
 }
-
 function setPaso(nombre){
   S.paso=S.pasos.indexOf(nombre);
   renderPaso(nombre);
