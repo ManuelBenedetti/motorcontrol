@@ -388,7 +388,16 @@ const sb=supabase.createClient(SURL,SKEY);
 const isTec=new URLSearchParams(location.search).get('modo')==='tecnico';
 const UMBRALES = { chequeo: 30, overhaul: 90 };
 document.getElementById('version-ts').textContent='v. '+new Date().toLocaleString('es-CL');
-document.getElementById(isTec?'tec-app':'jefe-app').style.display='flex';
+if(isTec){
+  document.getElementById('tec-app').style.display='flex';
+} else {
+  const clave=prompt('Ingresa la clave de acceso:');
+  if(clave==='1601'){
+    document.getElementById('jefe-app').style.display='flex';
+  } else {
+    document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#ef4444;font-family:sans-serif;font-size:16px;">Acceso denegado — recarga la página para intentar de nuevo</div>';
+  }
+}
 
 /* ── HELPERS ── */
 let allMotores=[],currentMotorId=null;
