@@ -559,11 +559,11 @@ async function tecInit(){
   const{data}=await sb.from('tecnicos').select('*').eq('activo',true).order('nombre');
   S.tecnicos=data||[];
   S.pasos=FLUJOS.registro;
-if(motorQR){
-  S.accion=null;
-  S.motorSale=null;
-  renderPaso('accion');
-  setTimeout(async()=>{
+ if(motorQR){
+   S.accion=null;
+   S.motorSale=null;
+   renderPaso('accion');
+   setTimeout(async()=>{
     const{data,error}=await sb.from('motores').select('*').ilike('codigo',motorQR).single();
     if(data){
       S.motorSale=data;
