@@ -867,8 +867,15 @@ async function startScan(tipo){
       c.getContext('2d').drawImage(v,0,0);
       const img=c.getContext('2d').getImageData(0,0,c.width,c.height);
       const code=jsQR(img.data,img.width,img.height);
-      if(code){const val=code.data.toUpperCase();document.getElementById('qr-input').value=val;stopScan();buscarMotorTec(tipo);}
-    },300);
+      if(code){
+        let val=code.data;
+        try{const u=new URL(val);const m=u.searchParams.get('motor');if(m)val=m;}catch(e){}
+        val=val.toUpperCase();
+        document.getElementById('qr-input').value=val;
+        stopScan();
+        buscarMotorTec(tipo);
+      }    
+      },300);
   }catch(e){showToast('No se pudo acceder a la cámara','error');}
 }
 
