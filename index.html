@@ -677,7 +677,7 @@ function renderQR(tipo){
 function renderUbicacion(){
   const d=S.datos;
   return`<div class="step-desc">¿En qué parte de la planta está instalado este motor?</div>
-  <div class="tec-field"><label>Línea / Área</label><select id="f-linea"><option value="">Selecciona...</option>${['1 - Despelonado','2 — Secado','3 — Calibrado','4 — Partido Mecanico','5 - Preseleccion','6 - Seleccion y Embalaje','Bodega','Otro'].map(l=>`<option${d.linea===l?' selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="tec-field"><label>Línea / Área</label><select id="f-linea"><option value="">Selecciona...</option>${['1 - Despelonado','2 — Secado','3 — Calibrado','4 — Partido Mecanico','5 - Preseleccion','6 - Seleccion y Embalaje','Bodega','Stock / Repuesto','Otro'].map(l=>`<option${d.linea===l?' selected':''}>${l}</option>`).join('')}</select></div>
   <div class="tec-field"><label>Equipo / Máquina específica</label><input id="f-equipo" type="text" placeholder="Ej: Cinta transportadora 2" value="${d.equipo||''}"></div>`;
 }
 
@@ -926,7 +926,7 @@ async function guardarTodo(){
   let motorId=S.motorSale?.id; let desc=''; let estadoNuevo=null;
 
   if(S.accion==='registro'){
-    const motor={codigo:S.motorSale.codigo,tipo_registro:'planta',linea:d.linea||null,equipo:d.equipo||null,marca:d.marca||null,potencia_kw:d.potencia_kw||null,voltaje:d.voltaje||null,rpm:d.rpm||null,corriente:d.corriente||null,numero_serie:d.numero_serie||null,tiene_caja:d.tiene_caja||false,caja_marca:d.caja_marca||null,caja_modelo:d.caja_modelo||null,caja_relacion:d.caja_relacion||null,caja_serie:d.caja_serie||null,rodamiento_delantero:d.rodamiento_delantero||null,rodamiento_trasero:d.rodamiento_trasero||null,estado:d.estado||'nuevo',fallas:d.fallas||[],observaciones:d.observaciones||null,registrado_por:resp};
+    const motor={codigo:S.motorSale.codigo,tipo_registro:['Stock / Repuesto'].includes(S.datos.linea)?'stock':'planta',linea:d.linea||null,equipo:d.equipo||null,marca:d.marca||null,potencia_kw:d.potencia_kw||null,voltaje:d.voltaje||null,rpm:d.rpm||null,corriente:d.corriente||null,numero_serie:d.numero_serie||null,tiene_caja:d.tiene_caja||false,caja_marca:d.caja_marca||null,caja_modelo:d.caja_modelo||null,caja_relacion:d.caja_relacion||null,caja_serie:d.caja_serie||null,rodamiento_delantero:d.rodamiento_delantero||null,rodamiento_trasero:d.rodamiento_trasero||null,estado:d.estado||'nuevo',fallas:d.fallas||[],observaciones:d.observaciones||null,registrado_por:resp};
     const{data:mNew,error}=await sb.from('motores').insert([motor]).select().single();
     if(error){showToast('Error: '+error.message,'error');return;}
     motorId=mNew.id; desc='Motor registrado en sistema.';
@@ -970,7 +970,8 @@ const AREAS_MAPA=[
   {id:'4 — Partido Mecanico',nombre:'Partido Mecánico',icono:'⚙️'},
   {id:'5 - Preseleccion',nombre:'Preselección',icono:'🔍'},
   {id:'6 - Seleccion y Embalaje',nombre:'Selección y Embalaje',icono:'📦'},
-  {id:'Bodega',nombre:'Bodega / Stock',icono:'🏭'},
+  {id:'Bodega',nombre:'Bodega',icono:'🏭'},
+  {id:'Stock / Repuesto',nombre:'Stock / Repuesto',icono:'🔄'},
   {id:'Otro',nombre:'Otros',icono:'🔧'},
 ];
 
