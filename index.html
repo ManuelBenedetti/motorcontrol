@@ -630,7 +630,7 @@ function renderQR(tipo){
 function renderUbicacion(){
   const d=S.datos;
   return`<div class="step-desc">¿En qué parte de la planta está instalado este motor?</div>
-  <div class="tec-field"><label>Línea / Área</label><select id="f-linea"><option value="">Selecciona...</option>${['1 - Despelonado','2 — Secado','3 — Calibrado','4 — Partido Mecanico','5 - Preseleccion','6 - Seleccion','Bodega','Otro'].map(l=>`<option${d.linea===l?' selected':''}>${l}</option>`).join('')}</select></div>
+  <div class="tec-field"><label>Línea / Área</label><select id="f-linea"><option value="">Selecciona...</option>${['1 - Despelonado','2 — Secado','3 — Calibrado','4 — Partido Mecanico','5 - Preseleccion','6 - Seleccion y Embalaje','Bodega','Otro'].map(l=>`<option${d.linea===l?' selected':''}>${l}</option>`).join('')}</select></div>
   <div class="tec-field"><label>Equipo / Máquina específica</label><input id="f-equipo" type="text" placeholder="Ej: Cinta transportadora 2" value="${d.equipo||''}"></div>`;
 }
 
