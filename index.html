@@ -235,7 +235,8 @@ textarea{height:80px;resize:vertical;}
   <div class="sidebar">
     <div class="sidebar-header">
       <div class="sidebar-logo">MotorControl</div>
-      <div class="sidebar-sub">Panel de jefatura</div> 
+      <div class="sidebar-sub">Panel de jefatura</div>
+      <div style="font-size:10px;color:var(--text3);padding:8px 20px;">v. 2026-04-28 10:00</div> 
       <div style="font-size:10px;color:var(--text3);padding:8px 20px;">v. 2026-04-28 10:00</div>
     </div>
     <nav class="nav">
@@ -350,7 +351,7 @@ const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const sb=supabase.createClient(SURL,SKEY);
 const isTec=new URLSearchParams(location.search).get('modo')==='tecnico';
 const UMBRALES = { chequeo: 30, overhaul: 90 };
-const VERSION = '2026-04-28 10:00';
+const VERSION = '2026-04-28 9:00';
 document.getElementById(isTec?'tec-app':'jefe-app').style.display='flex';
 
 /* ── HELPERS ── */
