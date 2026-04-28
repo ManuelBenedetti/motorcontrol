@@ -386,6 +386,7 @@ const SURL='https://tsrdplqowefoxryhxves.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzcmRwbHFvd2Vmb3hyeWh4dmVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNjg3NDUsImV4cCI6MjA5Mjg0NDc0NX0.y1Ocv3MfVLD9ilcoyRPm45Kk6Y9Q7tCrwa5LvpSej9E';
 const sb=supabase.createClient(SURL,SKEY);
 const isTec=new URLSearchParams(location.search).get('modo')==='tecnico';
+const motorQR=new URLSearchParams(location.search).get('motor');
 const UMBRALES = { chequeo: 30, overhaul: 90 };
 document.getElementById('version-ts').textContent='v. '+new Date().toLocaleString('es-CL');
 if(isTec){
@@ -558,6 +559,10 @@ async function tecInit(){
   const{data}=await sb.from('tecnicos').select('*').eq('activo',true).order('nombre');
   S.tecnicos=data||[];
   S.pasos=FLUJOS.registro;
+if(motorQR){
+  S.motorSale={id:null,codigo:motorQR,esNuevo:false};
+  await buscarMotorTec('qr');
+} else {
   renderPaso('accion');
 }
 
